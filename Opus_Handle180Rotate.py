@@ -151,7 +151,7 @@ def rtnArb_Rot(promega, n):
 
 
 def rotM(p):
-    """ 愛点行列算出関数
+    """ 回転行列算出関数
 
     例
     p = np.array([np.pi, np.pi/2, np.pi/3])
@@ -212,10 +212,9 @@ input_n = ROTATE_CENTER / norm_n
 R = rtnArb_Rot(DELTAOMEGA, input_n)
 """
 
-
 # ##################################################################
 # 初期位置の車輪を設定，描画
-# 1回目の開店後の前輪点群データを算出
+# 1回目の回転後の前輪点群データを算出
 # ##################################################################
 def calc_front_wheel():
     # プロットサイズの指定
@@ -282,20 +281,28 @@ def calc_front_wheel():
 
         # iCounter = 0
 
+        # 回転後の前輪データの算出
         # ハンドル回転角度＝0°の初期車輪位置：　wheel_init
         # wheel_initを回転行列rを経てomega分だけ回転させた時の車輪はdotdot_tmpになる．
         # print("WheelInit = ", wheel_init)
         dotdot_tmp = np.dot(r, wheel_init)
         row, col = dotdot_tmp.shape
+        
+        # 前輪と後輪共通の接平面を算出
+        dd_tan_tmp = calc_tangent(dotdot_tmp)
 
+        # 接地点データの抽出
+        # 接平面に接する前輪データを抽出
         min_index = np.argmin(dotdot_tmp[2, :])
         # print("min_index = ", min_index)
         # print("minimum of dotdot_tmp = ", np.min(dotdot_tmp[2,:]))
 
+        # 接地点データをX軸，Y軸，Z軸の値に分解，保存
         wd.xfG.append(dotdot_tmp[0, min_index])
         wd.yfG.append(dotdot_tmp[1, min_index])
         wd.zfG.append(dotdot_tmp[2, min_index])
 
+        # 接地点データからハンドル旋回角分のデータを抽出
         if omega <= STEERING_LIMIT*10:
             wd.xfGC.append(dotdot_tmp[0, min_index])
             wd.yfGC.append(dotdot_tmp[1, min_index])
@@ -308,6 +315,24 @@ def calc_front_wheel():
     return wd
 
 
+# ##################################################################
+# 接平面の算出
+# ##################################################################
+def calc_tangent(dotdot_tmp):
+    """接平面の算出
+    関数名(前輪の点群データ：3次元配列)
+    右手座標系の回転処理語の前輪点群データと後輪の点群データ（固定）
+    の接平面(Ground：3次元ベクトル)を算出する．
+    但し接平面のX軸ベクトルは0となる．Y軸とZ軸の値だけとなる．
+    WD: calc_front_wheel()の算出結果
+    """
+    rtn_wd = wd
+    return rtn_wd
+
+
+# ##################################################################
+# 2次元グラフの表示処理
+# ##################################################################
 def draw_2d_graph(wd):
     '''2次元グラフ表示処理
     '''
