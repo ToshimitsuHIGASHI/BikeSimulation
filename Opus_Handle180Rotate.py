@@ -197,6 +197,22 @@ class Wheel2D:
     yfGD = []
     zfGD = []
 
+class Bike:
+    """オートバイのデータクラス
+    """
+    # キャスター角 := THETA
+    def __init__(self):
+        self.theta = THETA
+        self.theta_rad = THETA_RAD
+        # トレール長の設定．フロントフォーク（＝ハンドル回転中心）と前輪中心間の距離となる．
+        self.offset = OFFSET
+        # 車輪径の定義
+        self.diameter = DIAMETER
+        # 回転中心
+        self.rotate_center = ROTATE_CENTER
+        # 前輪中心の設定
+        self.wheel_o = WHEEL_O
+        self.wd = np.zeros(9).reshape((9,1))
 
 # ##################################################################
 # 設定値の内部パラメータへの変換
@@ -233,11 +249,11 @@ def calc_front_wheel():
     # print("WheelInit = ", wheel_init)
 
     # for omega in range(0, 360):
-    #    dotdot_tmp = np.array([DIAMETER * np.cos(omega*np.pi/180),
+    #    wheel_move = np.array([DIAMETER * np.cos(omega*np.pi/180),
     #                          0,
     #                          DIAMETER * np.sin(omega*np.pi/180)] + Front_O)
-    #    plotDot(dotdot_tmp, 'y')
-    #    DotDot_F = np.append(DotDot_F, [dotdot_tmp], axis = 0)
+    #    plotDot(wheel_move, 'y')
+    #    DotDot_F = np.append(DotDot_F, [wheel_move], axis = 0)
     # print("DotDot_F = ", DotDot_F)
     # print('len(DotDot_F) = ', len(DotDot_F))
     # print('type(DotDot_F) = ', type(DotDot_F)) = <class 'numpy.ndarray'>
@@ -249,7 +265,7 @@ def calc_front_wheel():
     # ##################################################################
 
     # バンク後の車輪データ（バンク中の暫定車輪データ）の定義
-    dotdot_tmp = np.empty((0, 3), int)
+    wheel_move = np.empty((0, 3), int)
     # DotDot_Itr = np.empty((0, 360, 3), int)
 
     # 接地点の初期化
@@ -283,42 +299,44 @@ def calc_front_wheel():
 
         # 回転後の前輪データの算出
         # ハンドル回転角度＝0°の初期車輪位置：　wheel_init
-        # wheel_initを回転行列rを経てomega分だけ回転させた時の車輪はdotdot_tmpになる．
+        # wheel_initを回転行列rを経てomega分だけ回転させた時の車輪はwheel_moveになる．
         # print("WheelInit = ", wheel_init)
-        dotdot_tmp = np.dot(r, wheel_init)
-        row, col = dotdot_tmp.shape
+        wheel_move = np.dot(r, wheel_init)
+        row, col = wheel_move.shape
         
         # 前輪と後輪共通の接平面を算出
-        dd_tan_tmp = calc_tangent(dotdot_tmp)
+        dd_tan_tmp = calc_tangent(wd)
 
         # 接地点データの抽出
         # 接平面に接する前輪データを抽出
-        min_index = np.argmin(dotdot_tmp[2, :])
+        min_index = np.argmin(wheel_move[2, :])
         # print("min_index = ", min_index)
-        # print("minimum of dotdot_tmp = ", np.min(dotdot_tmp[2,:]))
+        # print("minimum of wheel_move = ", np.min(wheel_move[2,:]))
 
         # 接地点データをX軸，Y軸，Z軸の値に分解，保存
-        wd.xfG.append(dotdot_tmp[0, min_index])
-        wd.yfG.append(dotdot_tmp[1, min_index])
-        wd.zfG.append(dotdot_tmp[2, min_index])
+        wd.xfG.append(wheel_move[0, min_index])
+        wd.yfG.append(wheel_move[1, min_index])
+        wd.zfG.append(wheel_move[2, min_index])
 
         # 接地点データからハンドル旋回角分のデータを抽出
         if omega <= STEERING_LIMIT*10:
-            wd.xfGC.append(dotdot_tmp[0, min_index])
-            wd.yfGC.append(dotdot_tmp[1, min_index])
-            wd.zfGC.append(dotdot_tmp[2, min_index])
+            wd.xfGC.append(wheel_move[0, min_index])
+            wd.yfGC.append(wheel_move[1, min_index])
+            wd.zfGC.append(wheel_move[2, min_index])
         elif 3600 - STEERING_LIMIT*10 <= omega <= 3600:
-            wd.xfGD.append(dotdot_tmp[0, min_index])
-            wd.yfGD.append(dotdot_tmp[1, min_index])
-            wd.zfGD.append(dotdot_tmp[2, min_index])
+            wd.xfGD.append(wheel_move[0, min_index])
+            wd.yfGD.append(wheel_move[1, min_index])
+            wd.zfGD.append(wheel_move[2, min_index])
 
-    return wd
+    bike = Bike()
+    bike.wd = wd
+    return bike
 
 
 # ##################################################################
 # 接平面の算出
 # ##################################################################
-def calc_tangent(dotdot_tmp):
+def calc_tangent(wd):
     """接平面の算出
     関数名(前輪の点群データ：3次元配列)
     右手座標系の回転処理語の前輪点群データと後輪の点群データ（固定）
@@ -518,7 +536,8 @@ ani.save(directory+fn+'.mp4', writer='ffmpeg', fps=FPS)
 '''
 
 if __name__ == '__main__':
-    wd = calc_front_wheel()
-    draw_2d_graph(wd)
-    draw_3d_graph(wd)
+    bike = calc_front_wheel()
+    print(type(bike))
+    draw_2d_graph(bike.wd)
+    draw_3d_graph(bike.wd)
     plt.show()
