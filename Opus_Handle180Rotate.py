@@ -38,6 +38,9 @@ OFFSET = 10
 # 車輪径の定義
 DIAMETER = 20
 
+# ホイルベースの定義
+WHEEL_BASE = 100
+
 # 回転中心の定義
 # 回転中心は前輪と後輪の接地点で結ばれたベクトルとなる
 POINT_1 = np.array([0, 0, DIAMETER - OFFSET / math.cos(THETA_RAD)])
@@ -212,6 +215,10 @@ class Bike:
         self.rotate_center = ROTATE_CENTER
         # 前輪中心の設定
         self.wheel_o = WHEEL_O
+        # 回転後の前輪中心
+        self.f_center = np.zeros(3)
+        # 後輪中心（後輪の中心は変わらない）
+        self.r_center = np.array([-WHEEL_BASE, 0, DIAMETER])
         self.wd = np.zeros(9).reshape((9,1))
 
 # ##################################################################
@@ -537,7 +544,10 @@ ani.save(directory+fn+'.mp4', writer='ffmpeg', fps=FPS)
 
 if __name__ == '__main__':
     bike = calc_front_wheel()
-    print(type(bike))
+    print(type(bike.wd))
+    print("bike.wheel_o = ", bike.wheel_o)
+    print("f_center = ", bike.f_center)
+    print("r_center = ", bike.r_center)
     draw_2d_graph(bike.wd)
     draw_3d_graph(bike.wd)
     plt.show()
