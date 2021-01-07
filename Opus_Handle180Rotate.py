@@ -216,7 +216,7 @@ class Bike:
         # 前輪中心の設定
         self.wheel_o = WHEEL_O
         # 回転後の前輪中心
-        self.f_center = np.zeros(3)
+        self.f_center = np.array([0, 0, DIAMETER])
         # 後輪中心（後輪の中心は変わらない）
         self.r_center = np.array([-WHEEL_BASE, 0, DIAMETER])
         self.wd = np.zeros(9).reshape((9,1))
