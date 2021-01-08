@@ -187,6 +187,12 @@ def rotM(p):
 class Wheel2D:
     """2Dグラフ用のデータクラス
     """
+    # 接地点の初期化
+    # 前輪描画データ：PtGnd_F
+    # 後輪描画データ：PtGnd_R
+    # PtGnd_F = np.empty((0, 3), int)
+    # PtGnd_R = np.empty((0, 3), int)
+
     # 描画データの初期化（前輪）車輪の360°回転分のデータ（x，y，z軸）要素数＝3600個
     xfG = []
     yfG = []
@@ -266,14 +272,6 @@ def calc_front_wheel():
     #wheel_move = np.empty((0, 3), int)
     # DotDot_Itr = np.empty((0, 360, 3), int)
 
-    # 接地点の初期化
-    # 前輪描画データ：PtGnd_F
-    # 後輪描画データ：PtGnd_R
-    # PtGnd_F = np.empty((0, 3), int)
-    # PtGnd_R = np.empty((0, 3), int)
-
-    #wd = Wheel2D()
-
     # 回転中心ベクトルの設定
     input_n = calcRotCentVector(POINT_1, POINT_2)
     print("input_n", input_n)
@@ -287,11 +285,11 @@ def calc_front_wheel():
     # range：　反復回数を示す．1回当たりの変化量が0.1なので，反復回数＝3600で傾き角＝360°
     #         となる．
 
-    # 1回の遷移は0.01°．ハンドルを360°回転させる．range()の引数に指定できるのは整数intのみ
+    # 1回の遷移は0.1°．ハンドルを360°回転させる．range()の引数に指定できるのは整数intのみ
     for omega in range(0, 3600):
 
         # 設定した回転角と回転中心に応じた回転行列を導出
-        r = rtnArb_Rot(omega/10, input_n)
+        r = rtnArb_Rot(0.1, input_n)
 
         # iCounter = 0
 
@@ -325,6 +323,8 @@ def calc_front_wheel():
             bike.wd.xfGD.append(bike.wheel_move[0, min_index])
             bike.wd.yfGD.append(bike.wheel_move[1, min_index])
             bike.wd.zfGD.append(bike.wheel_move[2, min_index])
+        
+        bike.wheel_init = bike.wheel_move
 
     return bike
 
