@@ -219,7 +219,12 @@ class Bike:
         self.f_center = np.array([0, 0, DIAMETER])
         # 後輪中心（後輪の中心は変わらない）
         self.r_center = np.array([-WHEEL_BASE, 0, DIAMETER])
-        self.wd = np.zeros(9).reshape((9,1))
+        # 前輪データ（途中産出値）
+        self.wd = Wheel2D()
+        # 前輪データ（初期値）
+        self.wheel_init = np.empty((0, 3), int)
+        # バンク後の車輪データ（バンク中の暫定車輪データ）の定義
+        self.wheel_move = np.empty((0, 3), int)
 
 # ##################################################################
 # 設定値の内部パラメータへの変換
@@ -240,39 +245,25 @@ R = rtnArb_Rot(DELTAOMEGA, input_n)
 # 1回目の回転後の前輪点群データを算出
 # ##################################################################
 def calc_front_wheel():
-    # プロットサイズの指定
-    # fig = plt.figure(figsize=(10,10),dpi=200)
 
-    # 車輪の描画（前輪）
+    # バイククラスの初期化
+    bike = Bike()
+
+    # 回転角の定義
     omega = np.linspace(0, 2*np.pi, ELEMENTS)
     # print("type of omega = ", type(omega))
     # print("shape of omega = ", np.shape(omega))
     # print("omega = ", omega)
-    wheel_init = [DIAMETER * np.cos(omega),
-                  np.zeros(ELEMENTS),
-                  DIAMETER * np.sin(omega)] + WHEEL_O
-    # print("type of WheelInit = ", type(wheel_init))
-    # print("type of Wheel_O", type(WHEEL_O))
-    # print("WheelInit = ", wheel_init)
-
-    # for omega in range(0, 360):
-    #    wheel_move = np.array([DIAMETER * np.cos(omega*np.pi/180),
-    #                          0,
-    #                          DIAMETER * np.sin(omega*np.pi/180)] + Front_O)
-    #    plotDot(wheel_move, 'y')
-    #    DotDot_F = np.append(DotDot_F, [wheel_move], axis = 0)
-    # print("DotDot_F = ", DotDot_F)
-    # print('len(DotDot_F) = ', len(DotDot_F))
-    # print('type(DotDot_F) = ', type(DotDot_F)) = <class 'numpy.ndarray'>
-    # print('DotDot_F.ndim = ', DotDot_F.ndim)
-    # print('DotDot_F.shape = ', DotDot_F.shape)
+    bike.wheel_init = [DIAMETER * np.cos(omega),
+                       np.zeros(ELEMENTS),
+                       DIAMETER * np.sin(omega)] + WHEEL_O
 
     # ##################################################################
     # 回転処理
     # ##################################################################
 
     # バンク後の車輪データ（バンク中の暫定車輪データ）の定義
-    wheel_move = np.empty((0, 3), int)
+    #wheel_move = np.empty((0, 3), int)
     # DotDot_Itr = np.empty((0, 360, 3), int)
 
     # 接地点の初期化
@@ -281,7 +272,7 @@ def calc_front_wheel():
     # PtGnd_F = np.empty((0, 3), int)
     # PtGnd_R = np.empty((0, 3), int)
 
-    wd = Wheel2D()
+    #wd = Wheel2D()
 
     # 回転中心ベクトルの設定
     input_n = calcRotCentVector(POINT_1, POINT_2)
@@ -308,35 +299,33 @@ def calc_front_wheel():
         # ハンドル回転角度＝0°の初期車輪位置：　wheel_init
         # wheel_initを回転行列rを経てomega分だけ回転させた時の車輪はwheel_moveになる．
         # print("WheelInit = ", wheel_init)
-        wheel_move = np.dot(r, wheel_init)
-        row, col = wheel_move.shape
+        bike.wheel_move = np.dot(r, bike.wheel_init)
+        row, col = bike.wheel_move.shape
         
         # 前輪と後輪共通の接平面を算出
-        dd_tan_tmp = calc_tangent(wd)
+        dd_tan_tmp = calc_tangent(bike.wd)
 
         # 接地点データの抽出
         # 接平面に接する前輪データを抽出
-        min_index = np.argmin(wheel_move[2, :])
+        min_index = np.argmin(bike.wheel_move[2, :])
         # print("min_index = ", min_index)
         # print("minimum of wheel_move = ", np.min(wheel_move[2,:]))
 
         # 接地点データをX軸，Y軸，Z軸の値に分解，保存
-        wd.xfG.append(wheel_move[0, min_index])
-        wd.yfG.append(wheel_move[1, min_index])
-        wd.zfG.append(wheel_move[2, min_index])
+        bike.wd.xfG.append(bike.wheel_move[0, min_index])
+        bike.wd.yfG.append(bike.wheel_move[1, min_index])
+        bike.wd.zfG.append(bike.wheel_move[2, min_index])
 
         # 接地点データからハンドル旋回角分のデータを抽出
         if omega <= STEERING_LIMIT*10:
-            wd.xfGC.append(wheel_move[0, min_index])
-            wd.yfGC.append(wheel_move[1, min_index])
-            wd.zfGC.append(wheel_move[2, min_index])
+            bike.wd.xfGC.append(bike.wheel_move[0, min_index])
+            bike.wd.yfGC.append(bike.wheel_move[1, min_index])
+            bike.wd.zfGC.append(bike.wheel_move[2, min_index])
         elif 3600 - STEERING_LIMIT*10 <= omega <= 3600:
-            wd.xfGD.append(wheel_move[0, min_index])
-            wd.yfGD.append(wheel_move[1, min_index])
-            wd.zfGD.append(wheel_move[2, min_index])
+            bike.wd.xfGD.append(bike.wheel_move[0, min_index])
+            bike.wd.yfGD.append(bike.wheel_move[1, min_index])
+            bike.wd.zfGD.append(bike.wheel_move[2, min_index])
 
-    bike = Bike()
-    bike.wd = wd
     return bike
 
 
