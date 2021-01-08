@@ -268,10 +268,6 @@ def calc_front_wheel():
     # 回転処理
     # ##################################################################
 
-    # バンク後の車輪データ（バンク中の暫定車輪データ）の定義
-    #wheel_move = np.empty((0, 3), int)
-    # DotDot_Itr = np.empty((0, 360, 3), int)
-
     # 回転中心ベクトルの設定
     input_n = calcRotCentVector(POINT_1, POINT_2)
     print("input_n", input_n)
