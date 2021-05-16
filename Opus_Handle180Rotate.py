@@ -16,7 +16,7 @@ from matplotlib.transforms import Affine2D
 # ##################################################################
 
 # 回転角の入力
-DELTAOMEGA = 0.1
+deltaTheta = 0.1
 
 # 車輪データの要素数（＝エレメント数）の定義
 ELEMENTS = 1000
@@ -38,22 +38,34 @@ OFFSET = 10
 # 車輪径の定義
 DIAMETER = 20
 
-# ホイルベースの定義
+# ホイールベース距離（前輪中心と後輪中心間の距離）
 WHEEL_BASE = 100
 
 # 回転中心の定義
 # 回転中心は前輪と後輪の接地点で結ばれたベクトルとなる
-POINT_1 = np.array([0, 0, DIAMETER - OFFSET / math.cos(THETA_RAD)])
-POINT_2 = np.array([DIAMETER/math.tan(THETA_RAD) - OFFSET/math.sin(THETA_RAD),
-                    0, 0])
-ROTATE_CENTER = POINT_2 - POINT_1
-print("Point1 = ", POINT_1)
-print("Point2 = ", POINT_2)
+StemCnt = np.array([0, 0, DIAMETER - OFFSET / math.cos(THETA_RAD)])
+StemBtm = np.array([DIAMETER / math.tan(THETA_RAD) - OFFSET / math.sin(THETA_RAD), 0, 0])
+ROTATE_CENTER = StemBtm - StemCnt
+print("StemCnt = ", StemCnt)
+print("StemBtm = ", StemBtm)
+
+# 回転方向ベクトルの定義；初期ベクトル
+# 単位ベクトルで扱う．前輪平面上のuベクトル
+DirectV = np.array([1, 0, 0])
+
+# 回転中心ベクトルの定義
+# 単位ベクトルで扱う．前輪平面上のvベクトル
+StemVec = np.array([1, 0, 0])
 
 # 前輪中心の設定
-WHEEL_O = np.array([np.zeros(ELEMENTS),
+Wheel_O = np.array([np.zeros(ELEMENTS), 
                     np.zeros(ELEMENTS),
                     DIAMETER*np.ones(ELEMENTS)])
+
+# 後輪中心の設定
+Wheel_O_R =  np.array([np.zeros(ELEMENTS), 
+                       WHEEL_BASE + np.ones(ELEMENTS), 
+                       DIAMETER*np.ones(ELEMENTS)])
 
 # 微小区間εの定義
 EPSILON = sys.float_info.epsilon
@@ -72,6 +84,7 @@ B = np.array([-2, -2, 1])
 # ##################################################################
 # サブ関数の定義
 # ##################################################################
+# 回転中心ベクトル算出関数
 def calcRotCentVector(param1, param2):
     """回転中心ベクトル算出関数
     """
@@ -84,18 +97,17 @@ def calcRotCentVector(param1, param2):
     norm_n = np.linalg.norm(n)
 
     # 回転中心基本ベクトルの算出
-    input_n = n / norm_n
+    StemVec = n / norm_n
 
     # 回転中心基底ベクトルの出力
-    return input_n
+    return StemVec
 
-
-def plotDot(ax, pr_bb, pr_color):
+# 点の描画処理（点，色）指定
+def plotDot(ax, PrBB, PrColor):
     """点の描画処理（点，色）指定
     """
-
-    for x, y, z in [pr_bb]:
-        ax.scatter(x, y, z, color=pr_color, marker='s')
+    for x, y, z in [PrBB]:
+        ax.scatter(x, y, z, color = PrColor, marker = 's')
 
 
 def arrow(ax, v, sp, c):
@@ -116,7 +128,7 @@ def arrow(ax, v, sp, c):
               color=c, linewidth=3)
     # print("ベクトル sp の大きさ", np.linalg.norm(sp))
 
-
+# 車輪の描画
 '''未使用のためコメントアウト
 def plotWheel(Ax, data):
     """車輪の描画
@@ -130,17 +142,14 @@ def plotWheel(Ax, data):
             ax.scatter(x, y, z, color='r', marker='s')
 '''
 
-
-def rtnArb_Rot(promega, n):
-    """右手座標系の回転処理関数（回転角，回転中心ベクトル）
-
-    回転角はdegree（0〜360°）を入力する．
-    """
+# 右手座標系の回転処理関数（回転角，回転中心ベクトル）
+# 回転角はdegree（0〜360°）を入力する．
+def rtnArb_Rot(PrTheta, n):
     n_x = n[0]
     n_y = n[1]
     n_z = n[2]
-    t = promega*np.pi/180
-    rot_rod = np.array([[np.cos(t) + n_x**2*(1-np.cos(t)),
+    t = PrTheta*np.pi/180
+    Rot_Rod = np.array([[np.cos(t) + n_x**2*(1-np.cos(t)),
                          n_x*n_y*(1-np.cos(t)) - n_z*np.sin(t),
                          n_x*n_z*(1-np.cos(t)) + n_y*np.sin(t)],
                         [n_y*n_x*(1-np.cos(t)) + n_z*np.sin(t),
@@ -149,10 +158,11 @@ def rtnArb_Rot(promega, n):
                         [n_z*n_x*(1-np.cos(t)) - n_y*np.sin(t),
                          n_z*n_y*(1-np.cos(t)) + n_x*np.sin(t),
                          np.cos(t) + n_z**2*(1-np.cos(t))]])
-    # print("Rot_Rod = ", rot_rod)
-    return rot_rod
+    # print("Rot_Rod = ", Rot_Rod)
+    return Rot_Rod
 
 
+# 回転行列算出関数
 def rotM(p):
     """ 回転行列算出関数
 
@@ -167,18 +177,18 @@ def rotM(p):
     pz = p[2]
 
     # 物体座標系の 1->2->3 軸で回転させる
-    rx = np.array([[1, 0, 0],
+    Rx = np.array([[1, 0, 0],
                    [0, np.cos(px), np.sin(px)],
                    [0, -np.sin(px), np.cos(px)]])
-    ry = np.array([[np.cos(py), 0, -np.sin(py)],
+    Ry = np.array([[np.cos(py), 0, -np.sin(py)],
                    [0, 1, 0],
                    [np.sin(py), 0, np.cos(py)]])
-    rz = np.array([[np.cos(pz), np.sin(pz), 0],
+    Rz = np.array([[np.cos(pz), np.sin(pz), 0],
                    [-np.sin(pz), np.cos(pz), 0],
                    [0, 0, 1]])
-    r = rz.dot(ry).dot(rx)
+    R = Rz.dot(Ry).dot(Rx)
 
-    return r
+    return R
 
 
 # ##################################################################
@@ -191,6 +201,9 @@ class Wheel2D:
     xfG = []
     yfG = []
     zfG = []
+    xfGX = []
+    yfGX = []
+    zfGX = []
 
     # キャンバー角でのセルフステアによる軌跡
     xfGC = []
@@ -214,7 +227,7 @@ class Bike:
         # 回転中心
         self.rotate_center = ROTATE_CENTER
         # 前輪中心の設定
-        self.wheel_o = WHEEL_O
+        self.wheel_o = Wheel_O
         # 回転後の前輪中心
         self.f_center = np.zeros(3)
         # 後輪中心（後輪の中心は変わらない）
@@ -248,12 +261,17 @@ def calc_front_wheel():
     # print("type of omega = ", type(omega))
     # print("shape of omega = ", np.shape(omega))
     # print("omega = ", omega)
-    wheel_init = [DIAMETER * np.cos(omega),
-                  np.zeros(ELEMENTS),
-                  DIAMETER * np.sin(omega)] + WHEEL_O
-    # print("type of WheelInit = ", type(wheel_init))
-    # print("type of Wheel_O", type(WHEEL_O))
-    # print("WheelInit = ", wheel_init)
+    WheelInit_F = [DIAMETER * np.cos(omega),
+                   np.zeros(ELEMENTS),
+                   DIAMETER * np.sin(omega)] + Wheel_O
+    # print("type of WheelInit_F = ", type(WheelInit_F))
+    # print("type of Wheel_O", type(Wheel_O))
+    # print("WheelInit_F = ", WheelInit_F)
+
+    # 車輪の定義（後輪）
+    WheelInit_R = [DIAMETER * np.cos(omega),
+                   np.zeros(ELEMENTS),
+                   DIAMETER * np.sin(omega)] + Wheel_O_R
 
     # for omega in range(0, 360):
     #    wheel_move = np.array([DIAMETER * np.cos(omega*np.pi/180),
@@ -284,8 +302,8 @@ def calc_front_wheel():
     wd = Wheel2D()
 
     # 回転中心ベクトルの設定
-    input_n = calcRotCentVector(POINT_1, POINT_2)
-    print("input_n", input_n)
+    StemVec = calcRotCentVector(StemCnt, StemBtm)
+    print("StemVec = ", StemVec)
 
     # ハンドル回転処理：　フロントフォークを中心に車輪を回転させる．
     # 0°から359°まで前輪，後輪を倒した時のそれぞれのデータ（前輪，後輪）の算出及び描画処理を
@@ -295,22 +313,23 @@ def calc_front_wheel():
     # leanAngle: 傾き角（リーン角）→0°〜360°まで傾ける
     # range：　反復回数を示す．1回当たりの変化量が0.1なので，反復回数＝3600で傾き角＝360°
     #         となる．
-
+    
     # 1回の遷移は0.01°．ハンドルを360°回転させる．range()の引数に指定できるのは整数intのみ
     for omega in range(0, 3600):
 
         # 設定した回転角と回転中心に応じた回転行列を導出
-        r = rtnArb_Rot(omega/10, input_n)
+        r = rtnArb_Rot(omega/10, StemVec)
 
         # iCounter = 0
 
         # 回転後の前輪データの算出
-        # ハンドル回転角度＝0°の初期車輪位置：　wheel_init
-        # wheel_initを回転行列rを経てomega分だけ回転させた時の車輪はwheel_moveになる．
-        # print("WheelInit = ", wheel_init)
-        wheel_move = np.dot(r, wheel_init)
+        # ハンドル回転角度＝0°の初期車輪位置：　WheelInit_F
+        # WheelInit_Fを回転行列Rを経てtheta分だけ回転させた時の車輪はDotDot_Tmpになる．
+        # print("WheelInit_F = ", WheelInit_F)
+        wheel_move = np.dot(r, WheelInit_F)
         row, col = wheel_move.shape
-        
+        # print("row = ", row, "col = ", col)
+
         # 前輪と後輪共通の接平面を算出
         dd_tan_tmp = calc_tangent(wd)
 
@@ -362,7 +381,7 @@ def draw_2d_graph(wd):
     '''2次元グラフ表示処理
     '''
     ffig = plt.figure(figsize=(DIAMETER/0.9, DIAMETER/1.6), dpi=80)
-    dAx = ffig.add_subplot(111)
+    dAx = ffig.add_subplot(111) 
     dAx.set_title("Trajectory of Turning Handle at 360 degrees")
     dAx.set_xlim(-(2*DIAMETER+2), 2*np.pi*10)
     dAx.set_ylim(-(2*DIAMETER+2), 2*DIAMETER+1)
@@ -450,15 +469,15 @@ def draw_3d_graph(wd):
     # ##################################################################
     # 回転軸の表示
     # ##################################################################
-    # arrow(ax, POINT_1, POINT_2, 'k')
-    # line= art3d.Line3D(POINT_1[0], POINT_1[1], POINT_1[2],
-    #                    POINT_2[0], POINT_2[1], POINT_2[2], color="k")
-    point_3 = [-1*(POINT_1[0]+DIAMETER * 1.2),
-               POINT_1[1],
-               POINT_1[2]+math.tan(THETA_RAD)*DIAMETER*1.2]
-    ax.plot([POINT_1[0], point_3[0]],
-            [POINT_1[1], point_3[1]],
-            [POINT_1[2], point_3[2]], color="k")
+    # arrow(ax, StemCnt, StemBtm, 'k')
+    # line= art3d.Line3D(StemCnt[0], StemCnt[1], StemCnt[2],
+    #                    StemBtm[0], StemBtm[1], StemBtm[2], color="k")
+    Point3 = [-1*(StemCnt[0]+DIAMETER * 1.2),
+              StemCnt[1],
+              StemCnt[2]+math.tan(THETA_RAD)*DIAMETER*1.2]
+    ax.plot([StemCnt[0], Point3[0]],
+            [StemCnt[1], Point3[1]], 
+            [StemCnt[2], Point3[2]], color = "k")
     # ax.add_line(line)
 
     # ##################################################################
@@ -478,8 +497,11 @@ def draw_3d_graph(wd):
     # 車輪データのテスト描画
     # 周回後の最終位置にある車輪を描画する．
     # 色は自動的に指定される．
-    ax.scatter(wd.xfG, wd.yfG, wd.zfG, s=40, alpha=0.3, marker=".")
+    ax.scatter(wd.xfG, wd.yfG, wd.zfG, s=1, alpha=0.3, marker=".")
+    # ステム
+    ax.scatter(wd.xfGX, wd.yfGX, wd.zfGX, s=1, alpha=0.3, c="k", marker=".")
 
+# 描画データ属性の設定
     def update(ifrm, xa, ya, za, xb, yb, zb):
         """描画データ属性の設定
         """
@@ -488,6 +510,7 @@ def draw_3d_graph(wd):
         sct.set_data(xb[ifrm], yb[ifrm])
         sct.set_3d_properties(zb[ifrm])
 
+# 更新する内容
     def _update_plot(i, fig, im, xa, ya, za):
         """更新する内容
         """
